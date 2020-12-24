@@ -46,6 +46,6 @@ COPY knex/migrations ./migrations
 RUN chown -R node:node /app
 USER node
 
-VOLUME /home/app/data
+VOLUME /app/images
 
 CMD [ "npm", "start" ]
