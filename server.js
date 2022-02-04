@@ -218,7 +218,7 @@ app.get('/files/*',
 app.post('/image',
   passport.authenticate('bearer', {session: false}),
   upload.single('image'), (req, res, next) => {
-    const tempFile = 'temp_image/' + req.file.filename;
+    const tempFile = 'temp_images/' + req.file.filename;
     const newFile = 'images/' + req.file.filename;
   
     // Check if the image has a valid type by checking the magic bytes
