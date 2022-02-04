@@ -9,6 +9,22 @@ const db = require('./db');
 const fs  = require('fs');
 const md5 = require('md5');
 const mime = require('mime-types');
+const filetype = require('magic-bytes.js');
+
+const allowedImageTypes = [
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/svg+xml'
+];
+
+const allowedImageExtensions = [
+  '.gif',
+  '.jpeg',
+  '.jpg',
+  '.png',
+  '.svg'
+];
 
 const upload = multer({
   dest: 'images/',
@@ -16,16 +32,15 @@ const upload = multer({
     next(err);
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = [
-      'image/gif',
-      'image/jpeg',
-      'image/png',
-      'image/svg+xml'
-    ];
-
-    if (allowedTypes.indexOf(file.mimetype) === -1) {
+    if (allowedImageTypes.indexOf(file.mimetype) === -1) {
       req.fileValidationError = 'goes wrong on the mimetype';
       return cb(null, false, new Error('goes wrong on the mimetype'));
+    }
+    
+    const ext = file.originalname.substring(file.originalname.lastIndexOf('.'));
+    if (allowedImageExtensions.indexOf(ext) === -1) {
+      req.fileValidationError = 'goes wrong on the extension';
+      return cb(null, false, new Error('goes wrong on the extension'));
     }
 
     cb(null, true);
@@ -43,24 +58,39 @@ const storage = multer.diskStorage({
     cb(null, 'files/')
   },
                                    });
+
+const allowedFileTypes = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+];
+
+const allowedFileExtensions = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx'
+];
+
 const uploadFile = multer({
   storage: storage,
-  dest: 'files/',
+  dest: 'temp_files/',
   onError: function (err, next) {
     next(err);
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
-
-    if (allowedTypes.indexOf(file.mimetype) === -1) {
+    if (allowedFileTypes.indexOf(file.mimetype) === -1) {
       req.fileValidationError = 'goes wrong on the mimetype';
       return cb(null, false, new Error('goes wrong on the mimetype'));
+    }
+    
+    const ext = file.originalname.substring(file.originalname.lastIndexOf('.'));
+    if (allowedFileExtensions.indexOf(ext) === -1) {
+      req.fileValidationError = 'goes wrong on the extension';
+      return cb(null, false, new Error('goes wrong on the extension'));
     }
 
     cb(null, true);
@@ -216,17 +246,52 @@ app.post('/images',
   });
 
 app.post('/file',
-  passport.authenticate('bearer', {session: false}),
+  //passport.authenticate('bearer', {session: false}),
   uploadFile.single('file'), (req, res, next) => {
-    // req.file is the `image` file
-    // req.body will hold the text fields, if there were any
-    //
+  
+    console.log (req.body);
+    
+    const tempFile = 'temp_files/' + req.file.filename;
+    const newFile = 'files/' + req.file.filename;
+  
+    // Check if the image has a valid type by checking the magic bytes
+    const mime = filetype.filetypemime(fs.readFileSync(tempFile));
+    
+    console.log (tempFile, mime, 'mime of temp file');
+    
+    let valid = false;
+    mime.forEach(mimetype => {
+      if (allowedFileTypes.includes(mimetype)) {
+        valid = true;
+      }
+    })
+    
     if (!res.headerSent) {
       res.setHeader('Content-Type', 'application/json');
     }
+    
+    if (!valid) {
+      try {
+        fs.unlinkSync(tempFile);
+      } catch (e) {
+        res.send(JSON.stringify({error: 'Incorrect mimetype'}));
+        return;
+      }
+      
+      res.send(JSON.stringify({error: 'Incorrect mimetype'}));
+      return;
+    }
+    
+    try {
+      fs.renameSync(tempFile, newFile);
+    } catch (e) {
+      res.send(JSON.stringify({error: 'Error during upload'}));
+      return;
+    }
+    
     console.log(req.file);
     res.send(JSON.stringify({
-      url: process.env.APP_URL + '/files/' + req.file.filename
+      url: process.env.APP_URL + '/' + newFile
     }));
   });
 
