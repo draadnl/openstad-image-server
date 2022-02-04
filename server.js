@@ -27,7 +27,7 @@ const allowedImageExtensions = [
 ];
 
 const upload = multer({
-  dest: 'images/',
+  dest: 'temp_images/',
   onError: function (err, next) {
     next(err);
   },
@@ -218,18 +218,52 @@ app.get('/files/*',
 app.post('/image',
   passport.authenticate('bearer', {session: false}),
   upload.single('image'), (req, res, next) => {
-    // req.file is the `image` file
-    // req.body will hold the text fields, if there were any
-    //
+    const tempFile = 'temp_image/' + req.file.filename;
+    const newFile = 'images/' + req.file.filename;
+  
+    // Check if the image has a valid type by checking the magic bytes
+    const mime = filetype.filetypemime(fs.readFileSync(tempFile));
+    
+    console.log (tempFile, mime, 'mime of temp file');
+    
+    let valid = false;
+    mime.forEach(mimetype => {
+      if (allowedImageTypes.includes(mimetype)) {
+        valid = true;
+      }
+    })
+    
     if (!res.headerSent) {
       res.setHeader('Content-Type', 'application/json');
     }
+    
+    if (!valid) {
+      try {
+        fs.unlinkSync(tempFile);
+      } catch (e) {
+        console.error ('unlink error', e);
+        res.status(400).send(JSON.stringify({error: 'Incorrect mimetype'}));
+        return;
+      }
+      
+      console.error ('incorrect mimetype');
+      res.status(400).send(JSON.stringify({error: 'Incorrect mimetype'}));
+      return;
+    }
+    
+    try {
+      fs.renameSync(tempFile, newFile);
+    } catch (e) {
+      res.status(500).send(JSON.stringify({error: 'Error during upload'}));
+      return;
+    }
+    
     res.send(JSON.stringify({
       url: process.env.APP_URL + '/image/' + req.file.filename
     }));
   });
 
-app.post('/images',
+/*app.post('/images',
   passport.authenticate('bearer', {session: false}),
   upload.array('images', 30), (req, res, next) => {
     // req.files is array of `photos` files
@@ -243,13 +277,11 @@ app.post('/images',
         url: process.env.APP_URL + '/image/' + req.file.filename
       }
     })));
-  });
+  });*/
 
 app.post('/file',
   //passport.authenticate('bearer', {session: false}),
   uploadFile.single('file'), (req, res, next) => {
-  
-    console.log (req.body);
     
     const tempFile = 'temp_files/' + req.file.filename;
     const newFile = 'files/' + req.file.filename;
@@ -274,18 +306,20 @@ app.post('/file',
       try {
         fs.unlinkSync(tempFile);
       } catch (e) {
-        res.send(JSON.stringify({error: 'Incorrect mimetype'}));
+        console.error ('unlink error', e);
+        res.status(400).send(JSON.stringify({error: 'Incorrect mimetype'}));
         return;
       }
       
-      res.send(JSON.stringify({error: 'Incorrect mimetype'}));
+      console.error ('incorrect mimetype');
+      res.status(400).send(JSON.stringify({error: 'Incorrect mimetype'}));
       return;
     }
     
     try {
       fs.renameSync(tempFile, newFile);
     } catch (e) {
-      res.send(JSON.stringify({error: 'Error during upload'}));
+      res.status(500).send(JSON.stringify({error: 'Error during upload'}));
       return;
     }
     
