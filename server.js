@@ -55,7 +55,7 @@ const storage = multer.diskStorage({
     cb(null, filename)
   },
   destination: function (req, file, cb) {
-    cb(null, 'files/')
+    cb(null, 'temp_files/')
   },
                                    });
 
