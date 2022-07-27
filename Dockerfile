@@ -1,4 +1,4 @@
-FROM node:10-slim
+FROM node:16.16-slim
 
 # Label for tracking
 LABEL nl.openstad.container="image" nl.openstad.version="1.1.1" nl.openstad.release-date="2020-05-07"
@@ -34,7 +34,7 @@ RUN mkdir -p images
 
 RUN apt-get update; \
     apt-get install -y python make cmake git bash g++; \
-    npm install --no-optional; \
+    npm install --no-optional --legacy-peer-deps; \
     npm install knex -g; \
     apt-get remove -y make cmake git g++; \
     apt autoremove -y
