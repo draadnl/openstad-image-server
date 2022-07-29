@@ -32,12 +32,14 @@ COPY knex ./knex
 
 RUN mkdir -p images
 
-RUN apt-get update; \
-    apt-get install -y python make cmake git bash g++; \
-    npm install --no-optional --legacy-peer-deps; \
-    npm install knex -g; \
-    apt-get remove -y make cmake git g++; \
-    apt autoremove -y
+RUN apt-get update
+RUN apt-get install -y python3 make cmake git bash g++
+RUN npm config set unsafe-perm true
+RUN npm install -g node-gyp
+RUN npm install --legacy-peer-deps
+RUN npm install knex -g
+RUN apt-get remove -y make cmake git g++
+RUN apt autoremove -y
 
 
 COPY knex/migrations ./migrations
