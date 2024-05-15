@@ -115,15 +115,18 @@ passport.use(new Strategy(
   function (token, done) {
     db.clients.findByToken(token, function (err, client) {
       if (err) {
+        console.error("Authentication error: ", err);
         return done(err);
       }
       if (!client) {
+        console.log("No client found with token: ", token);
         return done(null, false);
       }
       return done(null, client, {scope: 'all'});
     });
   }
 ));
+
 
 /**
  * Instantiate the Image steam server, and proxy it with
@@ -153,12 +156,27 @@ app.get('/image/*',
  *  The url for creating one Image
  */
 app.post('/image',
-  passport.authenticate('bearer', {session: false}),
-  upload.single('image'), (req, res, next) => {
-    // req.file is the `image` file
-    // req.body will hold the text fields, if there were any
-    //
-    if (!res.headerSent) {
+  passport.authenticate('bearer', {session: false}, (err, user, info) => {
+    if (err) {
+      console.error("Authentication error in /image: ", err);
+      return res.status(500).send({ error: 'Internal Server Error' });
+    }
+    if (!user) {
+      console.log("Failed authentication in /image: ", info);
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    const fileName = req.file.filename || req.file.key;
+    res.send(JSON.stringify({
+      url: process.env.APP_URL + '/image/' + fileName
+    }));
+  }),
+  
+  upload.single('image'), (req, res) => {
+    if (!res.headersSent) {
       res.setHeader('Content-Type', 'application/json');
     }
 
