@@ -19,7 +19,7 @@
     "clean": "node ./scripts/clean.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.507.0",
+    "@aws-sdk/client-s3": "^3.995.0",
     "dotenv": "^6.0.0",
     "express": "^4.17.1",
     "express-json-error-handler": "^2.0.0",
